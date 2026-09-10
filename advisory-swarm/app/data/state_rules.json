@@ -1,12 +1,22 @@
 {
-  "_note": "Synthetic fixture for the advisory-swarm demo. Simplified for teaching purposes; not real legal or tax advice. Seeded deliberately so the canned 'selling my business' scenario produces a structurally guaranteed conflict between tax_cpa and estate_attorney (see ESTATE_ATTORNEY_HANDOFF.md).",
+  "_note": "Synthetic fixture for the advisory-swarm demo. Simplified for teaching purposes; not real legal or tax advice. Seeded deliberately so the canned 'selling my business' scenarios produce a structurally guaranteed conflict between tax_cpa and estate_attorney (see ESTATE_ATTORNEY_HANDOFF.md and app/prompts/tax_cpa.notes.md).",
+  "_reconciliation": "Merged from the estate-attorney track (flat top-level state/federal keys, read by get_state_trust_rules) and the tax track (per-state income-tax detail). Estate keys are unchanged; the tax track adds a `tax_detail` object per state and the extra states FL/NY/TX/WA. Federal lifetime gift exemption harmonized to the OBBBA-2026 figure (15,000,000) to match tax_brackets_2026.json. Structured brackets / NIIT / AMT / QSBS tiers live in tax_brackets_2026.json (get_tax_brackets); this file carries the doctrine and state-law facts.",
+  "_returned_by_tool": "get_state_trust_rules(state) -- state is a full name ('California', 'Nevada', ...) or 'federal'. (Phase 0 may add two-letter-code normalization; the estate track's impl currently takes full names only.)",
 
   "California": {
     "state_income_tax_top_rate": 0.133,
     "taxes_incomplete_gift_non_grantor_trusts": true,
     "estate_tax": "no state-level estate tax",
     "gift_completion_lookback_guidance_days": 180,
-    "notes": "Unlike most states, California taxes the accumulated income of incomplete-gift non-grantor trusts (DING/NING-style) back to the grantor if the grantor is a California resident, regardless of the trust's situs. This closes the situs-shopping loophole most other states still allow. A California-resident client cannot assume a Nevada or Delaware trust shelters trust income from California tax."
+    "notes": "Unlike most states, California taxes the accumulated income of incomplete-gift non-grantor trusts (DING/NING-style) back to the grantor if the grantor is a California resident, regardless of the trust's situs. This closes the situs-shopping loophole most other states still allow. A California-resident client cannot assume a Nevada or Delaware trust shelters trust income from California tax.",
+    "tax_detail": {
+      "capital_gains_treatment": "taxed as ordinary income; no preferential long-term rate",
+      "conforms_to_federal_qsbs_1202": false,
+      "conforms_to_federal_qsbs_1202_note": "California fully taxes the gain that section 1202 excludes federally.",
+      "taxes_nongrantor_trust_income_when": "the trust has a California-resident fiduciary OR a non-contingent California-resident beneficiary; income is apportioned on those factors",
+      "pass_through_entity_elective_tax": { "available": true, "rate": 0.093, "note": "workaround for the federal SALT deduction cap" },
+      "residency_note": "Aggressive on residency audits. A pre-liquidity-event move must be a genuine change of domicile; California can tax gain accrued while resident and taxes California-source income regardless of domicile."
+    }
   },
 
   "Nevada": {
@@ -14,13 +24,84 @@
     "ding_trust_permitted": true,
     "estate_tax": "no state-level estate tax",
     "gift_completion_lookback_guidance_days": 180,
-    "notes": "No state income tax; a common trust situs for incomplete-gift non-grantor trusts. Only shelters trust income from state tax for grantors resident in states that respect trust situs — see California's carve-out."
+    "notes": "No state income tax; a common trust situs for incomplete-gift non-grantor trusts. Only shelters trust income from state tax for grantors resident in states that respect trust situs — see California's carve-out.",
+    "tax_detail": {
+      "capital_gains_treatment": "no state income tax",
+      "conforms_to_federal_qsbs_1202": true,
+      "taxes_nongrantor_trust_income_when": "never -- no state income tax",
+      "pass_through_entity_elective_tax": { "available": false },
+      "trust_situs_note": "Frequently chosen situs for an incomplete-gift non-grantor ('NING') trust: a high-tax-state grantor shifts trust-level investment income to a no-income-tax situs while the gift stays incomplete for federal transfer-tax purposes. Works only if the domicile state does not tax the trust on fiduciary/beneficiary-residence grounds -- check that state's taxes_nongrantor_trust_income_when."
+    }
+  },
+
+  "Florida": {
+    "state_income_tax_top_rate": 0.0,
+    "ding_trust_permitted": true,
+    "estate_tax": "no state-level estate tax",
+    "gift_completion_lookback_guidance_days": 180,
+    "notes": "No state income tax, no state estate tax, strong homestead protection. A common destination for a pre-liquidity-event domicile change.",
+    "tax_detail": {
+      "capital_gains_treatment": "no state income tax",
+      "conforms_to_federal_qsbs_1202": true,
+      "taxes_nongrantor_trust_income_when": "never -- no state income tax",
+      "pass_through_entity_elective_tax": { "available": false },
+      "residency_note": "Establishing Florida domicile (homestead, driver's license, voter registration, physical presence) before a liquidity event can remove the origin state's tax on the gain -- but the origin state (e.g. California) may still tax gain accrued or sourced while its resident."
+    }
+  },
+
+  "New York": {
+    "state_income_tax_top_rate": 0.109,
+    "taxes_incomplete_gift_non_grantor_trusts": false,
+    "estate_tax": "state estate tax with a 'cliff' -- estates just over the exemption can be taxed on the entire amount, not just the excess",
+    "gift_completion_lookback_guidance_days": 180,
+    "notes": "New York generally does not tax the income of a resident non-grantor trust that has no New York trustee, no New York situs assets, and no New York source income (the 'exempt resident trust' rules) -- but it has a three-year add-back for gifts made within three years of death for estate-tax purposes.",
+    "tax_detail": {
+      "capital_gains_treatment": "taxed as ordinary income; no preferential long-term rate",
+      "conforms_to_federal_qsbs_1202": true,
+      "taxes_nongrantor_trust_income_when": "generally exempt if no New York domiciliary grantor test is met and there is no New York trustee, situs assets, or source income",
+      "pass_through_entity_elective_tax": { "available": true, "rate": 0.109 },
+      "residency_note": "Statutory residency: 183+ days plus a permanent place of abode can make a non-domiciliary a New York resident for the year."
+    }
+  },
+
+  "Texas": {
+    "state_income_tax_top_rate": 0.0,
+    "ding_trust_permitted": true,
+    "estate_tax": "no state-level estate tax",
+    "gift_completion_lookback_guidance_days": 180,
+    "notes": "No state income tax and no state estate tax; a common domicile-change destination.",
+    "tax_detail": {
+      "capital_gains_treatment": "no state income tax",
+      "conforms_to_federal_qsbs_1202": true,
+      "taxes_nongrantor_trust_income_when": "never -- no state income tax",
+      "pass_through_entity_elective_tax": { "available": false },
+      "residency_note": "No state income tax; the origin state may still tax gain accrued or sourced while its resident."
+    }
+  },
+
+  "Washington": {
+    "state_income_tax_top_rate": 0.0,
+    "ding_trust_permitted": true,
+    "estate_tax": "state estate tax applies above roughly $2.2M, with rates up to 35%",
+    "gift_completion_lookback_guidance_days": 180,
+    "notes": "No ordinary income tax, but a standalone 7% capital gains excise tax applies to annual long-term gains above roughly $270,000 (indexed). Real estate is exempt; a gain excluded federally under section 1202 is also exempt from the Washington tax.",
+    "tax_detail": {
+      "capital_gains_treatment": "7% excise tax on annual long-term capital gains above ~$270,000 (indexed); real estate exempt; section 1202-excluded gain exempt",
+      "conforms_to_federal_qsbs_1202": true,
+      "taxes_nongrantor_trust_income_when": "no broad trust income tax, but the capital gains excise tax can reach a resident trust's long-term gains",
+      "pass_through_entity_elective_tax": { "available": false },
+      "residency_note": "No ordinary income tax, but the capital gains excise tax and a state estate tax are both live considerations for a large one-time gain."
+    }
   },
 
   "federal": {
-    "qsbs_exclusion_2026": "Greater of $10,000,000 or 10x adjusted basis, per taxpayer or per qualifying trust, under IRC Section 1202.",
+    "qsbs_exclusion_2026": "Greater of $10,000,000 or 10x adjusted basis, per taxpayer or per qualifying trust, under IRC Section 1202. Applies to stock acquired on or before 2025-07-04. For stock acquired after that date, a tiered exclusion (50% at 3 years / 75% at 4 years / 100% at 5 years) and a $15,000,000 cap apply -- see get_tax_brackets(2026, ...).qsbs_section_1202 for the structured version.",
     "gift_tax_annual_exclusion_2026": 19000,
-    "gift_tax_lifetime_exemption_2026": 13990000,
+    "gift_tax_lifetime_exemption_2026": 15000000,
+    "gift_tax_lifetime_exemption_married_couple_2026": 30000000,
+    "top_transfer_tax_rate": 0.40,
+    "basis_step_up_at_death": true,
+    "lifetime_gift_basis_rule": "carryover -- a lifetime gift transfers the donor's basis; only property held until death receives a step-up to fair market value",
     "step_transaction_risk_note": "The IRS can collapse a gift of QSBS stock into a trust made after a binding or near-binding agreement to sell (e.g., a signed letter of intent or term sheet) under the step-transaction / assignment-of-income doctrine. If collapsed, the original holder is treated as having sold the stock and then gifted the after-tax proceeds — eliminating the multiplied exclusion and shifting the gain back to the grantor. Best practice: complete the gift before any letter of intent or agreement in principle exists, using a qualified appraisal for value that is not yet fixed by a pending deal."
   }
 }
