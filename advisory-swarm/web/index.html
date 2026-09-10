@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Advisory Swarm — test frontend</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+  h1 { font-size: 1.3rem; } h2 { font-size: 1rem; margin-top: 2rem; }
+  textarea { width: 100%; box-sizing: border-box; height: 4rem; font-family: inherit; font-size: 0.9rem; padding: 0.5rem; }
+  button { margin-top: 0.5rem; padding: 0.5rem 1.25rem; cursor: pointer; }
+  .banner { background: #fef3c7; padding: 0.5rem 1rem; font-size: 0.8rem; margin-bottom: 1rem; }
+  .cards { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
+  .card { border: 1px solid #ddd; border-radius: 6px; padding: 0.75rem; flex: 1; min-width: 220px; }
+  .card h3 { margin: 0 0 0.4rem; font-size: 0.9rem; }
+  .state { font-size: 0.75rem; padding: 0.1rem 0.4rem; border-radius: 3px; background: #eee; }
+  .state.drafting { background: #bfdbfe; } .state.done { background: #bbf7d0; } .state.rebutting { background: #fde68a; }
+  .log { font-size: 0.75rem; color: #555; margin-top: 0.4rem; white-space: pre-wrap; }
+  pre { background: #f4f4f4; padding: 0.75rem; overflow-x: auto; font-size: 0.8rem; white-space: pre-wrap; }
+  .conflict { border-left: 3px solid #f59e0b; padding-left: 0.6rem; margin: 0.5rem 0; }
+</style>
+</head>
+<body>
+<div class="banner">Synthetic data. Educational demonstration — not financial, tax, or legal advice.</div>
+<h1>Advisory Swarm — test frontend (temp)</h1>
+
+<textarea id="scenario">I'm sitting on a $2.4M pre-IPO stock grant that's over 60% of my liquid net worth. Should I diversify now?</textarea>
+<button onclick="submitTurn()">Ask the panel</button>
+
+<div class="cards" id="cards"></div>
+
+<h2>Conflicts</h2>
+<div id="conflicts">(none yet)</div>
+
+<h2>Memo</h2>
+<pre id="memo">(none yet)</pre>
+
+<h2>Raw event log</h2>
+<pre id="raw" style="max-height:200px;"></pre>
+
+<script>
+const SPEC_IDS = ["financial_advisor", "tax_cpa", "estate_attorney"];
+const cardsEl = document.getElementById('cards');
+const cards = {};
+for (const id of SPEC_IDS) {
+  const div = document.createElement('div');
+  div.className = 'card';
+  div.innerHTML = `<h3>${id}</h3><span class="state" id="state-${id}">idle</span><div class="log" id="log-${id}"></div>`;
+  cardsEl.appendChild(div);
+  cards[id] = div;
+}
+
+function setState(id, state) {
+  const el = document.getElementById('state-' + id);
+  if (el) { el.textContent = state; el.className = 'state ' + state; }
+}
+function appendLog(id, text) {
+  const el = document.getElementById('log-' + id);
+  if (el) el.textContent += text + '\n';
+}
+
+async function submitTurn() {
+  document.getElementById('conflicts').textContent = '(running...)';
+  document.getElementById('memo').textContent = '(running...)';
+  document.getElementById('raw').textContent = '';
+  for (const id of SPEC_IDS) { setState(id, 'idle'); document.getElementById('log-' + id).textContent = ''; }
+
+  const res = await fetch('/api/turn', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({query: document.getElementById('scenario').value}),
+  });
+  const {run_id} = await res.json();
+  const es = new EventSource('/api/stream/' + run_id);
+  es.onmessage = (e) => {
+    const event = JSON.parse(e.data);
+    document.getElementById('raw').textContent += JSON.stringify(event) + '\n';
+    handleEvent(event);
+  };
+}
+
+function handleEvent(event) {
+  if (event.type === 'agent_start') setState(event.agent_id, 'drafting');
+  if (event.type === 'tool_call') appendLog(event.agent_id, `tool: ${event.tool}(${JSON.stringify(event.input_summary)})`);
+  if (event.type === 'draft_complete') setState(event.agent_id, 'done');
+  if (event.type === 'conflicts') {
+    const el = document.getElementById('conflicts');
+    if (!event.found.length) { el.innerHTML = `<p>${event.rationale || 'No material conflicts found.'}</p>`; return; }
+    el.innerHTML = event.found.map(c => `<div class="conflict"><b>${c.topic}</b> (${c.materiality})<br>${c.question}</div>`).join('');
+  }
+  if (event.type === 'rebuttal') { setState(event.agent_id, 'rebutting'); appendLog(event.agent_id, `rebuttal[${event.conflict_id}]: ${event.position}`); }
+  if (event.type === 'memo') document.getElementById('memo').textContent = JSON.stringify(event.memo, null, 2);
+  if (event.type === 'usage') appendLog('financial_advisor', `total cost: $${event.total_cost.toFixed(4)}`);
+  if (event.type === 'error') document.getElementById('memo').textContent = 'ERROR: ' + event.message;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "_synthetic": true,
+  "name": "Demo Client",
+  "age": 42,
+  "state_of_residence": "California",
+  "annual_income": 850000,
+  "net_worth": 4200000,
+  "family": "Married, two children (ages 8 and 11)",
+  "goals": [
+    "Retire by 55",
+    "Fund children's education",
+    "Manage concentration risk from employer stock"
+  ]
+}

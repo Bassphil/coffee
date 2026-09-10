@@ -1,0 +1,50 @@
+{
+  "_synthetic": true,
+  "client_id": "demo-client-1",
+  "as_of": "2026-09-01",
+  "holdings": [
+    {
+      "asset": "employer_stock_XYZ",
+      "asset_class": "concentrated_equity",
+      "value": 2400000,
+      "cost_basis": 180000,
+      "liquid": false,
+      "acquired": "2022-03-01",
+      "note": "Pre-IPO QSBS-eligible grant; 5-year holding period completes 2027-03-01."
+    },
+    {
+      "asset": "diversified_index_funds",
+      "asset_class": "equities",
+      "value": 900000,
+      "cost_basis": 700000,
+      "liquid": true
+    },
+    {
+      "asset": "bond_ladder",
+      "asset_class": "diversifiers",
+      "value": 300000,
+      "cost_basis": 300000,
+      "liquid": true
+    },
+    {
+      "asset": "cash",
+      "asset_class": "cash",
+      "value": 300000,
+      "cost_basis": 300000,
+      "liquid": true
+    }
+  ],
+  "target_allocation": {
+    "equities": 0.60,
+    "diversifiers": 0.30,
+    "cash": 0.10
+  },
+  "liquid_net_worth": 3900000,
+  "concentration_pct_of_liquid_net_worth": 0.6154,
+  "market_assumptions": {
+    "equities": {"expected_return": 0.07, "volatility": 0.16},
+    "concentrated_equity": {"expected_return": 0.09, "volatility": 0.35},
+    "diversifiers": {"expected_return": 0.04, "volatility": 0.06},
+    "cash": {"expected_return": 0.045, "volatility": 0.01}
+  }
+}
