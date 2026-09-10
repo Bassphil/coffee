@@ -27,6 +27,7 @@ demo's conflicts.
 | `data/scenarios.json` | done (tax entry) | **shared file** — one entry, `tax_liquidity_event`; other tracks append |
 | `tools_tax.py` | done | `get_tax_brackets` + `get_state_rules` impls & schemas; `TAX_TOOLS` / `TAX_TOOL_IMPLS` for the Phase 0 aggregator |
 | `evals/tax_cases.py` | done | `ROUTER_LABELS` (L1), `PLANTED_CONFLICTS` (L2), `GOLD_MEMO_POINTS` (L3) |
+| `evals/tax_grader.py` | done | Layer-3 grader of a tax_cpa draft on `completion` + `subject_integrity`; deterministic checks + batched PASS/FAIL judge; `TAX_RESPONSE_GRADER_CASE`, `SAMPLE_DRAFTS` (strong/weak fixtures), discrimination smoke test |
 
 ## Planted conflicts (Layer 2 ground truth)
 
@@ -70,6 +71,15 @@ grounding — live in `evals/tax_cases.py::PLANTED_CONFLICTS`.
 5. **`evals/tasks.py` aggregator** imports the three lists from
    `evals/tax_cases.py` and merges them with the legal / finance tracks'
    equivalents. Router set target is ~30 labeled turns total; tax contributes 10.
+6. **`evals/tax_grader.py`** needs two things from Phase 0 to run against real
+   swarm output: (a) a `judge(system, user, schema) -> dict` callable wrapping
+   `client.py`'s FAST_MODEL, passed via `context["judge"]`; (b) the
+   `SpecialistDraft` schema to carry an ordered actions field
+   (`recommended_actions[]` or `action_plan[]`) -- the grader falls back to
+   sequencing-language detection if absent, but the field makes
+   `completion.actions_sequenced` deterministic. `KNOWN_ANTIFACTS` and the
+   pushback-target expectations are keyed to `tax_liquidity_event`; add a block
+   per new tax scenario.
 
 ## Not done yet
 
