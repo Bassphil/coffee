@@ -1,0 +1,15 @@
+{
+  "_note": "Sample fixture for the standalone estate_attorney harness only. Reconcile with the shared data/profile.json and data/scenarios.json once session.py / specialists.py exist — this should become one of the canned scenarios, not a parallel fixture.",
+  "client_name": "Synthetic Client — Dana Whitfield",
+  "state_of_residence": "California",
+  "scenario": "Selling a business for $4,000,000. In early discussions with one interested buyer; no letter of intent signed yet, but one is expected within 4-6 weeks.",
+  "assets": {
+    "business_equity_value_usd": 4000000,
+    "qsbs_eligible": true,
+    "qsbs_basis_usd": 50000
+  },
+  "family": {
+    "married": false,
+    "children": 0
+  }
+}
