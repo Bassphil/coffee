@@ -2,67 +2,162 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Advisory Swarm — test frontend</title>
+<title>The Round Table — Advisory Swarm</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
-  h1 { font-size: 1.3rem; } h2 { font-size: 1rem; margin-top: 2rem; }
-  textarea { width: 100%; box-sizing: border-box; height: 4rem; font-family: inherit; font-size: 0.9rem; padding: 0.5rem; }
-  button { margin-top: 0.5rem; padding: 0.5rem 1.25rem; cursor: pointer; }
-  .banner { background: #fef3c7; padding: 0.5rem 1rem; font-size: 0.8rem; margin-bottom: 1rem; }
-  .cards { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
-  .card { border: 1px solid #ddd; border-radius: 6px; padding: 0.75rem; flex: 1; min-width: 220px; }
-  .card h3 { margin: 0 0 0.4rem; font-size: 0.9rem; }
-  .state { font-size: 0.75rem; padding: 0.1rem 0.4rem; border-radius: 3px; background: #eee; }
-  .state.drafting { background: #bfdbfe; } .state.done { background: #bbf7d0; } .state.rebutting { background: #fde68a; }
-  .log { font-size: 0.75rem; color: #555; margin-top: 0.4rem; white-space: pre-wrap; }
-  pre { background: #f4f4f4; padding: 0.75rem; overflow-x: auto; font-size: 0.8rem; white-space: pre-wrap; }
-  .conflict { border-left: 3px solid #f59e0b; padding-left: 0.6rem; margin: 0.5rem 0; }
+  body { font-family: 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif; max-width: 1600px; margin: 1.2rem auto; padding: 0 1.5rem 3rem; color: #2b1d0e;
+    background: #faf3e3 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Crect width='60' height='60' fill='%23faf3e3'/%3E%3Ccircle cx='30' cy='30' r='1' fill='%23eaddc0'/%3E%3C/svg%3E"); }
+  h1 { font-size: 2rem; margin-bottom: 0.1rem; color: #7a1f1f; letter-spacing: 0.03em; }
+  h2 { font-size: 1.1rem; margin-top: 2.2rem; border-bottom: 2px solid #c9a96e; padding-bottom: 0.35rem; color: #7a1f1f; }
+  .sub { color: #5a4a30; font-size: 0.9rem; margin-top: 0; font-style: italic; }
+  .banner { background: #f7ecc8; color: #4a3618; padding: 0.5rem 1rem; font-size: 0.8rem; margin-bottom: 1rem; border-radius: 4px; border: 1px solid #c9a96e; }
+  textarea { width: 100%; box-sizing: border-box; height: 4.5rem; font-family: inherit; font-size: 0.95rem; padding: 0.7rem; border: 2px solid #c9a96e; border-radius: 6px; background: #fffdf7; color: #2b1d0e; }
+  button { margin-top: 0.6rem; padding: 0.65rem 1.6rem; cursor: pointer; background: linear-gradient(#a52626, #7a1f1f); color: #fffdf7; border: 2px solid #c9a96e; border-radius: 6px; font-size: 0.95rem; font-weight: 600; letter-spacing: 0.03em; }
+  button:hover { background: linear-gradient(#bc2e2e, #8a2424); }
+  button:disabled { background: #999; border-color: #bbb; cursor: default; }
+  .statusbar { font-size: 0.85rem; color: #5a4a30; margin-top: 0.6rem; }
+  .presets { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.5rem 0; }
+  .preset { font-size: 0.78rem; padding: 0.35rem 0.8rem; background: #f0e2bc; color: #4a3618; border-radius: 12px; cursor: pointer; border: 1px solid #c9a96e; }
+  .preset:hover { background: #e6d3a0; }
+
+  .cards { display: flex; gap: 1.1rem; flex-wrap: wrap; margin-top: 1rem; }
+  .card { border: 2px solid #7a5c2e; border-radius: 10px; padding: 0.9rem; flex: 1; min-width: 250px;
+    background: linear-gradient(180deg, #f4ecd8, #e8dcc0); box-shadow: 0 3px 8px rgba(0,0,0,0.4); }
+  .card h3 { margin: 0 0 0.1rem; font-size: 1rem; color: #5c1414; }
+  .card .role { font-size: 0.72rem; color: #7a5c2e; font-style: italic; margin-bottom: 0.4rem; }
+  .sigil { font-size: 1.4rem; margin-right: 0.3rem; }
+  .state { font-size: 0.7rem; padding: 0.15rem 0.55rem; border-radius: 10px; background: #ccc; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  .state.drafting { background: #b8d4f0; color: #1a3a5c; } .state.done { background: #b8e8c0; color: #1a5c2a; } .state.rebutting { background: #f0d888; color: #5c4a14; }
+  .log { font-size: 0.72rem; color: #4a3a20; margin-top: 0.5rem; white-space: pre-wrap; line-height: 1.5; font-family: Consolas, monospace; }
+  pre { background: #f0e2bc; color: #3a2a12; padding: 0.75rem; overflow-x: auto; font-size: 0.78rem; white-space: pre-wrap; border-radius: 6px; border: 1px solid #c9a96e; }
+
+  .conflict { border-left: 4px solid #b8862f; padding: 0.5rem 0 0.5rem 0.8rem; margin: 0.6rem 0; background: #fdf1d6; color: #4a3618; border-radius: 0 4px 4px 0; }
+  .conflict b { font-size: 0.92rem; color: #7a1f1f; }
+
+  .memo-card { background: linear-gradient(180deg, #f9f3e3, #f0e6ca); border: 3px double #7a5c2e; border-radius: 8px; padding: 1.2rem 1.5rem; box-shadow: 0 4px 14px rgba(0,0,0,0.45); }
+  .memo-card h4 { margin: 1.1rem 0 0.3rem; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; color: #8a1f1f; border-bottom: 1px solid #cbb888; }
+  .memo-card h4:first-child { margin-top: 0; }
+  .seal { text-align: center; font-size: 1.6rem; margin-bottom: 0.2rem; }
+  .headline { font-size: 1.15rem; font-weight: 700; margin: 0 0 0.5rem; color: #5c1414; text-align: center; font-style: italic; }
+  .resolution { border-left: 4px solid #2a6e3a; padding: 0.4rem 0 0.4rem 0.7rem; margin: 0.5rem 0; background: #eaf5ec; border-radius: 0 4px 4px 0; }
+  .resolution .tradeoff { color: #555; font-style: italic; font-size: 0.85rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  td, th { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid #d8c8a0; }
+  details summary { cursor: pointer; font-size: 0.85rem; color: #5a4a30; margin-top: 1.5rem; }
+
+  @keyframes ride { 0%,100% { box-shadow: 0 3px 8px rgba(0,0,0,0.15), 0 0 0px #c9a227; } 50% { box-shadow: 0 3px 8px rgba(0,0,0,0.15), 0 0 18px 4px #c9a227; } }
+  .card.active { border-color: #c9a227; animation: ride 1.3s ease-in-out infinite; }
+  .card.settled { border-color: #2a6e3a; }
+
+  .phases { display: flex; gap: 0.4rem; margin: 0.9rem 0 0.2rem; }
+  .phase { flex: 1; text-align: center; font-size: 0.72rem; padding: 0.4rem 0.2rem; border-radius: 6px; background: #f0e2bc; color: #6b5a3a; border: 1px solid #c9a96e; text-transform: uppercase; letter-spacing: 0.03em; transition: all 0.3s; }
+  .phase.active { background: #a52626; color: #fffdf7; border-color: #c9a227; animation: ride 1.3s ease-in-out infinite; }
+  .phase.done { background: #cdeed6; color: #164a24; border-color: #2a6e3a; }
+  .phase.skipped { background: #e6ddc8; color: #9a8a6a; text-decoration: line-through; }
+
+  .top-row { display: grid; grid-template-columns: 1.3fr 1fr; gap: 1.5rem; align-items: start; }
+  .top-row textarea { height: 6.2rem; }
+  .lower-row { display: grid; grid-template-columns: 1fr 1.7fr; gap: 1.5rem; align-items: start; margin-top: 1rem; }
+  .lower-row h2 { margin-top: 0; }
+  @media (max-width: 900px) { .top-row, .lower-row { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
-<div class="banner">Synthetic data. Educational demonstration — not financial, tax, or legal advice.</div>
-<h1>Advisory Swarm — test frontend (temp)</h1>
+<div class="banner">📜 Synthetic data. Educational demonstration — not financial, tax, or legal advice.</div>
+<h1>👑 The Round Table</h1>
+<p class="sub">Three knights ride forth to counsel the King — and when they disagree, you shall see it.</p>
 
-<textarea id="scenario">I'm sitting on a $2.4M pre-IPO stock grant that's over 60% of my liquid net worth. Should I diversify now?</textarea>
-<button onclick="submitTurn()">Ask the panel</button>
+<div class="top-row">
+  <div>
+    <div class="presets">
+      <span class="preset" onclick="loadPreset('retirement')">⚜ The King turns 50 in California: Roth conversion + Social Security</span>
+      <span class="preset" onclick="loadPreset('concentration')">⚜ A hoard of concentrated pre-IPO stock</span>
+    </div>
+    <textarea id="scenario">I'm turning 50 this year and live in California. I want to start converting some of my traditional 401(k)/IRA balances to Roth before I claim Social Security, to manage my tax bracket in retirement. How should I sequence the conversions, and how does this affect my Social Security claiming strategy and my estate plan?</textarea>
+    <button id="askBtn" onclick="submitTurn()">⚔ Summon the Knights</button>
+    <div class="statusbar" id="statusbar"></div>
+    <div class="phases" id="phases">
+      <div class="phase" id="phase-draft">Riding Forth</div>
+      <div class="phase" id="phase-council">Council Dispute</div>
+      <div class="phase" id="phase-rebuttal">Crossed Swords</div>
+      <div class="phase" id="phase-decree">Royal Decree</div>
+    </div>
+  </div>
+  <div class="cards" id="cards"></div>
+</div>
 
-<div class="cards" id="cards"></div>
+<div class="lower-row">
+  <div>
+    <h2>⚔ Council Dispute</h2>
+    <div id="conflicts">(the knights have not yet crossed swords)</div>
+  </div>
+  <div>
+    <h2>📜 The King's Decree</h2>
+    <div id="memo" class="memo-card">(awaiting the council)</div>
+  </div>
+</div>
 
-<h2>Conflicts</h2>
-<div id="conflicts">(none yet)</div>
-
-<h2>Memo</h2>
-<pre id="memo">(none yet)</pre>
-
-<h2>Raw event log</h2>
-<pre id="raw" style="max-height:200px;"></pre>
+<details>
+  <summary>Herald's raw dispatches (event log)</summary>
+  <pre id="raw" style="max-height:240px;"></pre>
+</details>
 
 <script>
+const PRESETS = {
+  retirement: "I'm turning 50 this year and live in California. I want to start converting some of my traditional 401(k)/IRA balances to Roth before I claim Social Security, to manage my tax bracket in retirement. How should I sequence the conversions, and how does this affect my Social Security claiming strategy and my estate plan?",
+  concentration: "I have a $2.4M pre-IPO stock grant that is over 60% of my liquid net worth. Should I diversify now or wait?",
+};
+function loadPreset(key) { document.getElementById('scenario').value = PRESETS[key]; }
+
 const SPEC_IDS = ["financial_advisor", "tax_cpa", "estate_attorney"];
+const KNIGHTS = {
+  financial_advisor: {sigil: "🛡️", name: "Sir Coffer", title: "Knight of the Treasury"},
+  tax_cpa:            {sigil: "⚖️", name: "Sir Ledger", title: "Knight of the Exchequer"},
+  estate_attorney:    {sigil: "📯", name: "Sir Chancery", title: "Knight of the Seal"},
+};
+const STATE_LABEL = {idle: "at rest", drafting: "riding forth", done: "returned", rebutting: "crossing swords"};
+
 const cardsEl = document.getElementById('cards');
-const cards = {};
 for (const id of SPEC_IDS) {
+  const k = KNIGHTS[id];
   const div = document.createElement('div');
   div.className = 'card';
-  div.innerHTML = `<h3>${id}</h3><span class="state" id="state-${id}">idle</span><div class="log" id="log-${id}"></div>`;
+  div.id = 'card-' + id;
+  div.innerHTML = `<h3><span class="sigil">${k.sigil}</span>${k.name}</h3><div class="role">${k.title}</div><span class="state" id="state-${id}">at rest</span><div class="log" id="log-${id}"></div>`;
   cardsEl.appendChild(div);
-  cards[id] = div;
 }
 
 function setState(id, state) {
   const el = document.getElementById('state-' + id);
-  if (el) { el.textContent = state; el.className = 'state ' + state; }
+  if (el) { el.textContent = STATE_LABEL[state] || state; el.className = 'state ' + state; }
+  const card = document.getElementById('card-' + id);
+  if (card) {
+    card.classList.toggle('active', state === 'drafting' || state === 'rebutting');
+    card.classList.toggle('settled', state === 'done');
+  }
 }
+
+function setPhase(name, status) {
+  const el = document.getElementById('phase-' + name);
+  if (el) el.className = 'phase' + (status ? ' ' + status : '');
+}
+function resetPhases() { for (const p of ['draft','council','rebuttal','decree']) setPhase(p, ''); }
 function appendLog(id, text) {
   const el = document.getElementById('log-' + id);
   if (el) el.textContent += text + '\n';
 }
+function esc(s) { return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 
+let startTime = 0;
 async function submitTurn() {
-  document.getElementById('conflicts').textContent = '(running...)';
-  document.getElementById('memo').textContent = '(running...)';
+  const btn = document.getElementById('askBtn');
+  btn.disabled = true; btn.textContent = '⚔ The knights ride...';
+  document.getElementById('conflicts').innerHTML = '<p>(the knights have not yet crossed swords)</p>';
+  document.getElementById('memo').innerHTML = '(awaiting the council)';
   document.getElementById('raw').textContent = '';
+  document.getElementById('statusbar').textContent = '';
   for (const id of SPEC_IDS) { setState(id, 'idle'); document.getElementById('log-' + id).textContent = ''; }
+  resetPhases();
+  startTime = Date.now();
 
   const res = await fetch('/api/turn', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -74,22 +169,69 @@ async function submitTurn() {
     const event = JSON.parse(e.data);
     document.getElementById('raw').textContent += JSON.stringify(event) + '\n';
     handleEvent(event);
+    if (event.type === 'done' || event.type === 'error') {
+      btn.disabled = false; btn.textContent = '⚔ Summon the Knights';
+      es.close();
+    }
   };
+  es.onerror = () => { btn.disabled = false; btn.textContent = '⚔ Summon the Knights'; };
 }
 
 function handleEvent(event) {
+  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+  const k = KNIGHTS[event.agent_id];
+  if (event.type === 'turn_start') setPhase('draft', 'active');
   if (event.type === 'agent_start') setState(event.agent_id, 'drafting');
-  if (event.type === 'tool_call') appendLog(event.agent_id, `tool: ${event.tool}(${JSON.stringify(event.input_summary)})`);
+  if (event.type === 'tool_call') appendLog(event.agent_id, `🔍 consults ${event.tool}(${JSON.stringify(event.input_summary)})`);
   if (event.type === 'draft_complete') setState(event.agent_id, 'done');
   if (event.type === 'conflicts') {
+    setPhase('draft', 'done');
     const el = document.getElementById('conflicts');
-    if (!event.found.length) { el.innerHTML = `<p>${event.rationale || 'No material conflicts found.'}</p>`; return; }
-    el.innerHTML = event.found.map(c => `<div class="conflict"><b>${c.topic}</b> (${c.materiality})<br>${c.question}</div>`).join('');
+    if (!event.found.length) {
+      setPhase('council', 'done'); setPhase('rebuttal', 'skipped'); setPhase('decree', 'active');
+      el.innerHTML = `<p style="color:#5a4a30">${esc(event.rationale || 'The knights find common ground — no dispute to bring before the King.')}</p>`;
+      return;
+    }
+    setPhase('council', 'done'); setPhase('rebuttal', 'active');
+    el.innerHTML = event.found.map(c =>
+      `<div class="conflict">⚔ <b>${esc(c.topic)}</b> <span style="color:#b8862f">(${c.materiality})</span><br>${esc(c.question)}</div>`
+    ).join('');
   }
-  if (event.type === 'rebuttal') { setState(event.agent_id, 'rebutting'); appendLog(event.agent_id, `rebuttal[${event.conflict_id}]: ${event.position}`); }
-  if (event.type === 'memo') document.getElementById('memo').textContent = JSON.stringify(event.memo, null, 2);
-  if (event.type === 'usage') appendLog('financial_advisor', `total cost: $${event.total_cost.toFixed(4)}`);
-  if (event.type === 'error') document.getElementById('memo').textContent = 'ERROR: ' + event.message;
+  if (event.type === 'rebuttal') {
+    setState(event.agent_id, 'rebutting');
+    appendLog(event.agent_id, `⚔ ${k ? k.name : event.agent_id} ${event.position}s on [${event.conflict_id}]`);
+  }
+  if (event.type === 'memo') {
+    const rebuttalEl = document.getElementById('phase-rebuttal');
+    if (rebuttalEl.className.includes('active')) setPhase('rebuttal', 'done');
+    setPhase('decree', 'done');
+    renderMemo(event.memo);
+  }
+  if (event.type === 'usage') document.getElementById('statusbar').textContent = `⏱ Council concluded in ${elapsed}s — treasury spent $${event.total_cost.toFixed(4)} (${Object.entries(event.by_phase).map(([p,v]) => `${p}: $${v.toFixed(4)}`).join(', ')})`;
+  if (event.type === 'error') document.getElementById('memo').innerHTML = `<span style="color:#b91c1c">The council was interrupted: ${esc(event.message)}</span>`;
+}
+
+function renderMemo(memo) {
+  const el = document.getElementById('memo');
+  let html = `<div class="seal">🏰</div><p class="headline">${esc(memo.headline)}</p><p>${esc(memo.recommendation)}</p>`;
+
+  html += `<h4>Counsel of the Knights</h4>` + memo.domain_findings.map(d =>
+    `<p><b>${(KNIGHTS[d.domain] ? KNIGHTS[d.domain].name : d.domain)}:</b> ${esc(d.summary)}</p>`).join('');
+
+  if (memo.conflicts_resolved && memo.conflicts_resolved.length) {
+    html += `<h4>Disputes Settled</h4>` + memo.conflicts_resolved.map(c =>
+      `<div class="resolution"><b>${esc(c.topic)}</b><br>${esc(c.tension)}<br><b>Ruling:</b> ${esc(c.resolution)}<br><span class="tradeoff">Tradeoff: ${esc(c.tradeoff)}</span></div>`
+    ).join('');
+  }
+
+  html += `<h4>Royal Action Plan</h4><table>` + memo.action_plan.map(a =>
+    `<tr><td>${a.step}</td><td>${esc(a.action)}</td><td>${esc(a.owner)}</td><td>${esc(a.timing)}</td></tr>`
+  ).join('') + `</table>`;
+
+  html += `<h4>Questions for the King</h4><ul>` + memo.open_questions.map(q => `<li>${esc(q)}</li>`).join('') + `</ul>`;
+  html += `<h4>Assumptions of the Court</h4><ul>` + memo.assumptions.map(a => `<li>${esc(a)}</li>`).join('') + `</ul>`;
+
+  el.innerHTML = html;
 }
 </script>
 </body>

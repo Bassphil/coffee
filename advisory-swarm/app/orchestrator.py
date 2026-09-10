@@ -65,7 +65,7 @@ class TurnResult:
 
 
 async def _call(client, model, system, messages, tools=None, output_schema=None, effort=None,
-                 tool_choice=None, max_tokens=4000):
+                 tool_choice=None, max_tokens=8000):
     kwargs = {}
     if tools:
         kwargs["tools"] = tools
@@ -236,7 +236,7 @@ async def _synthesize(client, query, profile, drafts, conflicts, rebuttals, conf
         client, config["synthesis_model"],
         "You are the supervisor synthesizing the panel's drafts and rebuttals into one memo.",
         [{"role": "user", "content": prompt}], output_schema=MEMO_SCHEMA,
-        effort=config["synthesis_effort"], max_tokens=6000,
+        effort=config["synthesis_effort"], max_tokens=8000,
     )
     memo = _parse_json(response)
     await sink({"type": "memo", "memo": memo})
