@@ -1,0 +1,26 @@
+{
+  "_note": "Synthetic fixture for the advisory-swarm demo. Simplified for teaching purposes; not real legal or tax advice. Seeded deliberately so the canned 'selling my business' scenario produces a structurally guaranteed conflict between tax_cpa and estate_attorney (see ESTATE_ATTORNEY_HANDOFF.md).",
+
+  "California": {
+    "state_income_tax_top_rate": 0.133,
+    "taxes_incomplete_gift_non_grantor_trusts": true,
+    "estate_tax": "no state-level estate tax",
+    "gift_completion_lookback_guidance_days": 180,
+    "notes": "Unlike most states, California taxes the accumulated income of incomplete-gift non-grantor trusts (DING/NING-style) back to the grantor if the grantor is a California resident, regardless of the trust's situs. This closes the situs-shopping loophole most other states still allow. A California-resident client cannot assume a Nevada or Delaware trust shelters trust income from California tax."
+  },
+
+  "Nevada": {
+    "state_income_tax_top_rate": 0.0,
+    "ding_trust_permitted": true,
+    "estate_tax": "no state-level estate tax",
+    "gift_completion_lookback_guidance_days": 180,
+    "notes": "No state income tax; a common trust situs for incomplete-gift non-grantor trusts. Only shelters trust income from state tax for grantors resident in states that respect trust situs — see California's carve-out."
+  },
+
+  "federal": {
+    "qsbs_exclusion_2026": "Greater of $10,000,000 or 10x adjusted basis, per taxpayer or per qualifying trust, under IRC Section 1202.",
+    "gift_tax_annual_exclusion_2026": 19000,
+    "gift_tax_lifetime_exemption_2026": 13990000,
+    "step_transaction_risk_note": "The IRS can collapse a gift of QSBS stock into a trust made after a binding or near-binding agreement to sell (e.g., a signed letter of intent or term sheet) under the step-transaction / assignment-of-income doctrine. If collapsed, the original holder is treated as having sold the stock and then gifted the after-tax proceeds — eliminating the multiplied exclusion and shifting the gain back to the grantor. Best practice: complete the gift before any letter of intent or agreement in principle exists, using a qualified appraisal for value that is not yet fixed by a pending deal."
+  }
+}
