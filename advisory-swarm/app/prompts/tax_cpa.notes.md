@@ -16,58 +16,37 @@ from the advisor (who optimizes portfolio risk/return) and the attorney (who
 optimizes transfer-tax exposure and control), which is what produces the
 demo's conflicts.
 
-## Fixtures owned here
+## Files owned by the tax track
 
-- `data/tax_brackets_2026.json` — everything `get_tax_brackets(year,
-  filing_status)` returns. Synthetic, labeled. Internally consistent, not
-  IRS-exact, by design.
-- `data/state_rules.json` — **shared file**. Tax owns the `tax` sub-object of
-  each state; `estate` / `trust_law` / `finance` sub-objects are `null` and
-  belong to the other tracks. Returned by `get_state_rules(state)`.
+| File | Status | Notes |
+|---|---|---|
+| `prompts/tax_cpa.txt` | done | persona; emits `cross_domain_implications`, `what_id_push_back_on`, `open_questions` |
+| `prompts/tax_cpa.notes.md` | this file | not sent to any model |
+| `data/tax_brackets_2026.json` | done | all of `get_tax_brackets()`. Synthetic, internally consistent, not IRS-exact |
+| `data/state_rules.json` | done (tax sub-objects) | **shared file** — `estate` / `trust_law` / `finance` sub-objects are `null`, owned by other tracks |
+| `data/scenarios.json` | done (tax entry) | **shared file** — one entry, `tax_liquidity_event`; other tracks append |
+| `tools_tax.py` | done | `get_tax_brackets` + `get_state_rules` impls & schemas; `TAX_TOOLS` / `TAX_TOOL_IMPLS` for the Phase 0 aggregator |
+| `evals/tax_cases.py` | done | `ROUTER_LABELS` (L1), `PLANTED_CONFLICTS` (L2), `GOLD_MEMO_POINTS` (L3) |
 
 ## Planted conflicts (Layer 2 ground truth)
 
-Each is guaranteed by fixture construction. The shared `data/profile.json` and
-`data/portfolio.json` (owned by Phase 0 / advisor track) must contain the noted
-fields or the conflict will not fire — see "Dependencies" below.
+All three are structurally guaranteed by the `tax_liquidity_event` scenario in
+`data/scenarios.json` (Jordan/Sam Reyes: CA domicile, ~$39M net worth, $22M
+founder stock at $600K basis acquired 2022-03, acquisition closing 2026-Q1).
+Full records — agents, positions, questions, materiality, required tool
+grounding — live in `evals/tax_cases.py::PLANTED_CONFLICTS`.
 
-### C1 — trust funding timing vs. basis step-up  (tax_cpa ↔ estate_attorney)
-
-- Fixture trigger: client domiciled in `CA` (`state_rules.CA.tax`:
-  `taxes_nongrantor_trust_income_when` is fiduciary/beneficiary-residence based;
-  no preferential LTCG rate) + net worth above the `$15M` exclusion in
-  `tax_brackets_2026.json` so an estate-tax motive is real + a pre-IPO/founder
-  position in `portfolio.json`.
-- Attorney position: move shares into an irrevocable trust **before** the
-  liquidity event to freeze value out of the estate.
-- **tax_cpa gold position:** funding the trust pre-sale forfeits the death-time
-  basis step-up on those shares and risks the QSBS holding-period / per-issuer
-  analysis; quantify the estate-tax saving against the extra capital-gains cost
-  before sequencing. `materiality: changes_action`.
-- Expected `what_id_push_back_on[].target = "estate_attorney"`.
-
-### C2 — diversify now vs. tax drag  (tax_cpa ↔ financial_advisor)
-
-- Fixture trigger: `portfolio.json` holds a concentrated low-basis position
-  (target ≈ 50%+ of net worth, basis ≈ 5–10% of value).
-- Advisor position: sell down to a target concentration (e.g. 15%) now.
-- **tax_cpa gold position:** realizing that gain costs ≈ 23.8% federal + state
-  (`top_combined_ltcg_rate_federal` + `state_rules.<domicile>.tax`); stage over
-  multiple years, hedge (collar / exchange fund), or gift appreciated shares to
-  a donor-advised fund / CRT instead of a lump-sum sale. `materiality:
-  changes_number` and `changes_action`.
-- Expected `what_id_push_back_on[].target = "financial_advisor"`.
-
-### C3 — lifetime gifting vs. hold-to-death  (tax_cpa ↔ estate_attorney)
-
-- Fixture trigger: same estate-tax-exposed profile as C1.
-- Attorney position: gift appreciated assets during life to use exclusion and
-  remove future appreciation.
-- **tax_cpa gold position:** lifetime gifts carry over the donor's basis
-  (`estate_and_gift.lifetime_gift_basis_rule = "carryover"`); assets held to
-  death get a step-up. For assets with large unrealized gain and heirs likely to
-  sell, the income-tax cost of carryover basis can exceed the transfer-tax
-  saving. `materiality: changes_action`.
+- **C1 — trust funding before close** (tax_cpa ↔ estate_attorney), `sequencing`,
+  `changes_action`. Push-back target `estate_attorney`: forfeited step-up + QSBS
+  holding-period / per-issuer interaction; baseline is "hold to the 2027-03-10
+  five-year mark and the federal gain may be fully excluded anyway."
+- **C2 — diversify now vs. staged** (tax_cpa ↔ financial_advisor),
+  `recommendation`, `changes_number`. Push-back target `financial_advisor`: a
+  2026 sale is ~$8M of tax (23.8% federal + 13.3% CA on ~$21.4M gain); wait for
+  QSBS, consider a pre-sale domicile change, hedge rather than sell early.
+- **C3 — lifetime gift vs. hold-to-death** (tax_cpa ↔ estate_attorney),
+  `recommendation`, `changes_action`. Carryover basis vs. step-up in dollar
+  terms; gift cash / post-sale proceeds instead of the low-basis shares.
 
 ## Dependencies on Phase 0 / other tracks
 
@@ -76,23 +55,28 @@ fields or the conflict will not fire — see "Dependencies" below.
    grounding is checkable), `cross_domain_implications[]`,
    `what_id_push_back_on[]` (with `target` + `claim` + `why`), `assumptions[]`,
    `open_questions[]` (with a `refer_to` professional), `confidence`.
-2. **Tools** (`tools.py`, identical sorted list for all three personas):
-   `get_client_profile`, `get_portfolio`, `get_state_rules`, `get_tax_brackets`,
-   `get_prior_finding`. The persona scopes which it uses; it must not 400 if the
-   others are present.
-3. **`data/profile.json`** needs: `filing_status`, `state_of_domicile` (set to
-   `"CA"` for the canned scenario), `approx_agi`, `net_worth`, `marital_status`.
-4. **`data/portfolio.json`** needs the concentrated low-basis holding described
-   in C2, and a founder/QSBS-eligible lot for C1 (acquisition date, basis,
-   current value, `qsbs_candidate: true`).
-5. **`specialists.py`** entry:
+2. **`tools.py` aggregator** merges `tools_tax.TAX_TOOLS` into the single
+   name-sorted tool list every specialist sees, and `TAX_TOOL_IMPLS` into the
+   dispatch table. Also expected in that shared list (other tracks / Phase 0):
+   `get_client_profile`, `get_portfolio`, `get_prior_finding`. The persona
+   scopes which it calls; it must not 400 if the others are present.
+3. **`data/profile.json` / `data/portfolio.json`** — the canned scenario carries
+   its own `profile` / `portfolio` inline, so these shared defaults are not
+   blocking. When they land, reconcile field names (the scenario uses
+   `state_of_domicile`, `filing_status`, `net_worth`, `cost_basis`,
+   `current_value`, `qsbs_candidate`).
+4. **`specialists.py`** entry:
    `{"id": "tax_cpa", "display_name": "Tax CPA", "persona_file": "prompts/tax_cpa.txt"}`
+5. **`evals/tasks.py` aggregator** imports the three lists from
+   `evals/tax_cases.py` and merges them with the legal / finance tracks'
+   equivalents. Router set target is ~30 labeled turns total; tax contributes 10.
 
 ## Not done yet
 
-- Rebuttal behavior verification (Phase 3) — persona already names the two
-  push-back triggers; needs the rebuttal schema wired.
-- Hand-written gold memo answers for the canned scenarios (Layer 3).
-- `data/scenarios.json` tax-relevant canned scenario(s).
-- Coordinate `profile.json` / `portfolio.json` field names with the advisor
-  track once Phase 0 lands.
+- Rebuttal-context check (Phase 3): confirm the persona behaves when it sees
+  only a counterpart's quoted span + its own draft, not the full draft.
+- Second/third canned scenarios (legal- and finance-led) — not tax's to write,
+  but C1/C3 need the estate_attorney persona to actually take the trust-first
+  position for the conflict to fire.
+- `get_prior_finding` multi-turn behavior once the tool exists.
+- Persona length is ~300 tokens; trim if the shared prefix budget gets tight.

@@ -1,0 +1,94 @@
+{
+  "_synthetic": true,
+  "_disclaimer": "Synthetic educational fixture for a demonstration. NOT financial, tax, or legal advice. People, companies, and figures are invented.",
+  "_ownership": "SHARED. Append your track's scenario objects to `scenarios`; keep each entry self-contained (its own `profile` and `portfolio`). Design Document.md: canned scenarios double as the eval task set.",
+  "scenarios": [
+    {
+      "id": "tax_liquidity_event",
+      "track": "tax",
+      "title": "Founder liquidity event -- trust-first vs. sell-and-diversify",
+      "scenario_text": "I'm the founder and CEO of Meridian Robotics. An acquirer has agreed to buy the company; my stake is worth about $22M at close, which is expected in the first quarter of 2026. My cost basis is roughly $600K. We're a married California couple, both in our early 50s, two adult kids, net worth around $39M. My estate attorney wants me to move a large block of the founder shares into an irrevocable trust before the deal closes. My financial advisor wants me to sell most of the position and diversify as soon as the cash lands. What should I actually do, and in what order?",
+      "profile": {
+        "as_of": "2026-01-15",
+        "primary_client": { "name": "Jordan Reyes", "age": 54, "role": "Founder / CEO, Meridian Robotics" },
+        "spouse": { "name": "Sam Reyes", "age": 52 },
+        "marital_status": "married",
+        "filing_status": "married_filing_jointly",
+        "state_of_domicile": "CA",
+        "dependents": [
+          { "relationship": "child", "age": 24, "claimed_as_dependent": false },
+          { "relationship": "child", "age": 21, "claimed_as_dependent": false }
+        ],
+        "w2_income_annual": 450000,
+        "other_ordinary_income_annual": 60000,
+        "approx_agi": 520000,
+        "net_worth": 39000000,
+        "estimated_taxable_estate": 40000000,
+        "liquidity_need_next_12_months": 500000,
+        "stated_goals": [
+          "keep the after-tax proceeds of the sale as large as possible",
+          "reduce estate-tax exposure for the kids",
+          "not be forced into a rushed, high-tax sale"
+        ]
+      },
+      "portfolio": {
+        "as_of": "2026-01-15",
+        "holdings": [
+          {
+            "id": "meridian_founder",
+            "description": "Founder common stock, Meridian Robotics Inc. (C-corporation)",
+            "asset_class": "private_equity_concentrated",
+            "acquired": "2022-03-10",
+            "cost_basis": 600000,
+            "current_value": 22000000,
+            "qsbs_candidate": true,
+            "qsbs_notes": "Acquired 2022-03 -> pre-2025-07-04 section 1202 rules apply (5-year hold for the 100% exclusion; per-issuer cap the greater of $10M or 10x basis; $50M aggregate-gross-assets test at issuance). The 5-year mark is 2027-03-10.",
+            "liquidity_event": { "type": "acquisition", "expected_close": "2026-Q1", "offer_value_for_stake": 22000000 }
+          },
+          {
+            "id": "public_equity",
+            "description": "Diversified public equity (index funds plus a few individual names)",
+            "asset_class": "public_equity",
+            "cost_basis": 4200000,
+            "current_value": 8000000,
+            "unrealized_gain": 3800000
+          },
+          {
+            "id": "cash_bonds",
+            "description": "Cash, Treasury bills, municipal bonds",
+            "asset_class": "cash_and_fixed_income",
+            "cost_basis": 3000000,
+            "current_value": 3000000
+          },
+          {
+            "id": "residence",
+            "description": "Primary residence (California)",
+            "asset_class": "real_estate_primary",
+            "cost_basis": 2500000,
+            "current_value": 4000000,
+            "mortgage_balance": 1000000
+          },
+          {
+            "id": "retirement",
+            "description": "401(k) and rollover IRA (pre-tax)",
+            "asset_class": "tax_deferred_retirement",
+            "cost_basis": null,
+            "current_value": 3000000
+          }
+        ],
+        "concentration": {
+          "largest_position": "meridian_founder",
+          "pct_of_net_worth": 0.56,
+          "pct_of_liquid_and_marketable_assets": 0.67
+        }
+      },
+      "eval": {
+        "router_gold_tier": "swarm",
+        "router_reason": "multi-domain, high-liability, action- and number-changing; not answerable from a standing memo",
+        "planted_conflict_ids": ["c1", "c2", "c3"],
+        "gold_and_conflict_detail": "app/evals/tax_cases.py",
+        "notes_ref": "app/prompts/tax_cpa.notes.md"
+      }
+    }
+  ]
+}
