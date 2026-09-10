@@ -9,15 +9,22 @@ Two rubric dimensions:
                        matter here covered (timing / basis / state), planted
                        conflicts engaged, actions sequenced, assumptions stated.
 
-  subject_integrity -- did it stay a grounded tax analysis? every figure traces
-                       to a tool result, nothing contradicts the fixtures, it
-                       stays in the tax lane (legal-validity and portfolio-design
-                       calls routed to open_questions, not answered), and it holds
-                       a tax position instead of capitulating to the other seats.
+  subject_integrity -- did it stay a grounded tax analysis? every finding cites a
+                       tool result, nothing contradicts the fixtures, it stays in
+                       the tax lane (legal-validity and portfolio-design calls
+                       routed to open_questions, not answered), and it holds a tax
+                       position instead of capitulating to the other seats.
 
 Design Document.md, Layer 3: "Judge structure and grounding, not correctness."
 Every judge check below is structural / grounding and returns PASS or FAIL. The
 "is this good tax advice?" question is deliberately not asked.
+
+Draft shape: the estate track's SPECIALIST_DRAFT_SCHEMA
+(app/schemas/estate_attorney.py), which Phase 0 should adopt into the shared
+schemas.py -- headline, domain_findings[{finding, basis}], recommendation,
+cross_domain_implications[{domain, implication}], what_id_push_back_on[{domain,
+concern}], assumptions[str], open_questions[str]. `basis` names the tool result a
+finding rests on.
 
 Phase 0 seam
 ------------
@@ -36,15 +43,13 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
 
 try:  # runnable both as a module and as a script
     from .tax_cases import PLANTED_CONFLICTS
 except ImportError:  # pragma: no cover
     from tax_cases import PLANTED_CONFLICTS
 
-_DATA = Path(__file__).parent.parent / "data"
-KNOWN_TOOLS = {"get_tax_brackets", "get_state_rules", "get_portfolio",
+KNOWN_TOOLS = {"get_tax_brackets", "get_state_trust_rules", "get_portfolio",
                "get_client_profile", "get_prior_finding"}
 
 PASS_THRESHOLDS = {"completion": 0.70, "subject_integrity": 0.85}
@@ -67,11 +72,9 @@ TAX_RESPONSE_GRADER_CASE = {
 
 # --- rubric ---------------------------------------------------------------- --
 
-# kind="deterministic" checks run in Python; kind="judge" go to the LLM judge as
-# a single batched PASS/FAIL call.
 RUBRIC = [
     {"id": "completion.conflicts_engaged", "dimension": "completion", "kind": "deterministic",
-     "desc": "what_id_push_back_on targets cover the agents this scenario plants a conflict with"},
+     "desc": "what_id_push_back_on domains cover the agents this scenario plants a conflict with"},
     {"id": "completion.actions_sequenced", "dimension": "completion", "kind": "deterministic",
      "desc": "the draft gives an ordered / time-anchored set of actions, not a single lump"},
     {"id": "completion.assumptions_stated", "dimension": "completion", "kind": "deterministic",
@@ -88,15 +91,15 @@ RUBRIC = [
           "sale against the QSBS holding period, basis (carryover vs. step-up), and state "
           "tax / residency?"},
 
-    {"id": "subject_integrity.numbers_grounded", "dimension": "subject_integrity", "kind": "deterministic",
-     "desc": "every key_numbers[] entry names a real source_tool"},
+    {"id": "subject_integrity.findings_grounded", "dimension": "subject_integrity", "kind": "deterministic",
+     "desc": "every domain_findings[] entry names a real tool in its `basis`"},
     {"id": "subject_integrity.out_of_lane_routed", "dimension": "subject_integrity", "kind": "deterministic",
-     "desc": "open_questions[] is non-empty and each entry refers the client to a licensed professional"},
+     "desc": "open_questions[] is non-empty and at least one routes the client to a licensed professional"},
     {"id": "subject_integrity.no_antifacts", "dimension": "subject_integrity", "kind": "deterministic",
      "desc": "the draft does not repeat a known-false statement for this scenario"},
     {"id": "subject_integrity.no_floating_figures", "dimension": "subject_integrity", "kind": "judge",
-     "q": "Is every numeric claim in the draft attributed to a tool result (via key_numbers "
-          "or an inline citation), with no free-floating figures?"},
+     "q": "Is every numeric claim in the draft tied to a tool result (via a domain_finding's "
+          "`basis` or an inline citation), with no free-floating figures?"},
     {"id": "subject_integrity.stays_out_of_law", "dimension": "subject_integrity", "kind": "judge",
      "q": "Does the draft avoid asserting legal conclusions about the validity, enforceability, "
           "or drafting of a trust or other instrument, routing those to open_questions instead?"},
@@ -112,40 +115,38 @@ RUBRIC = [
 KNOWN_ANTIFACTS = {
     "tax_liquidity_event": [
         (r"california.{0,40}(conform|exempt).{0,20}(qsbs|1202)",
-         "California does not conform to section 1202 (state_rules.CA.tax)."),
+         "California does not conform to section 1202 (state_rules California.tax_detail)."),
         (r"(100\s*%|fully)\s*exclu.{0,60}202[56]",
          "The pre-2025 lot needs a 5-year hold (2027-03-10) for the 100% exclusion; a 2026 sale gets 0%."),
         (r"airtight|bulletproof|guaranteed to (protect|work)",
          "Overstated certainty about a legal instrument -- out of lane and not supported."),
         (r"qsbs.{0,20}(40\s*%|forty percent)",
-         "Section 1202 tiers are 50/75/100%, not 40% (tax_brackets_2026.qsbs_section_1202)."),
+         "Section 1202 tiers are 50/75/100%, not 40% (tax_brackets_2026 qsbs_section_1202)."),
     ],
 }
 
 
-# --- draft rendering ------------------------------------------------------- --
+# --- draft access -------------------------------------------------------- --
 
 def _render(draft) -> str:
-    if isinstance(draft, str):
-        return draft
-    return json.dumps(draft, indent=2, sort_keys=True)
+    return draft if isinstance(draft, str) else json.dumps(draft, indent=2, sort_keys=True)
 
 
 def _get(draft, key, default=None):
     return draft.get(key, default) if isinstance(draft, dict) else default
 
 
-# --- deterministic checks ------------------------------------------------- --
+# --- deterministic checks ---------------------------------------------- --
 
-def _expected_pushback_targets(scenario_id: str) -> set[str]:
-    targets = set()
+def _expected_pushback_domains(scenario_id: str) -> set[str]:
+    out = set()
     for c in PLANTED_CONFLICTS:
         if c.get("scenario_id") != scenario_id:
             continue
         for p in c["positions"]:
             if p["agent"] != "tax_cpa":
-                targets.add(p["agent"])
-    return targets
+                out.add(p["agent"])
+    return out
 
 
 def deterministic_checks(draft, scenario_id: str) -> dict[str, dict]:
@@ -153,16 +154,16 @@ def deterministic_checks(draft, scenario_id: str) -> dict[str, dict]:
     out: dict[str, dict] = {}
 
     pushbacks = _get(draft, "what_id_push_back_on", []) or []
-    got = {p.get("target") for p in pushbacks if isinstance(p, dict)}
-    want = _expected_pushback_targets(scenario_id)
+    got = {p.get("domain") for p in pushbacks if isinstance(p, dict)}
+    want = _expected_pushback_domains(scenario_id)
     out["completion.conflicts_engaged"] = {
         "verdict": "PASS" if want and want.issubset(got) else "FAIL",
-        "evidence": f"pushback targets {sorted(got)} vs expected {sorted(want)}",
+        "evidence": f"pushback domains {sorted(d for d in got if d)} vs expected {sorted(want)}",
     }
 
     actions = _get(draft, "recommended_actions") or _get(draft, "action_plan")
-    seq_lang = bool(re.search(r"\b(first|then|next|before close|after close|step 1|"
-                              r"sequence|by (year-end|20\d\d)|q[1-4]\s*20\d\d)\b", text))
+    seq_lang = bool(re.search(r"\b(first,|then |next,|before close|after close|step 1|"
+                              r"sequence:|by (year-end|20\d\d)|q[1-4]\s*20\d\d)\b", text))
     out["completion.actions_sequenced"] = {
         "verdict": "PASS" if (actions and len(actions) >= 2) or seq_lang else "FAIL",
         "evidence": "explicit action list" if actions else ("sequencing language present"
@@ -175,26 +176,24 @@ def deterministic_checks(draft, scenario_id: str) -> dict[str, dict]:
         "evidence": f"{len(assumptions)} assumption(s)",
     }
 
-    knums = _get(draft, "key_numbers", []) or []
-    bad = [k for k in knums if not str(k.get("source_tool", "")).strip()
-           or k.get("source_tool") not in KNOWN_TOOLS]
-    out["subject_integrity.numbers_grounded"] = {
-        "verdict": "PASS" if knums and not bad else "FAIL",
-        "evidence": "all key_numbers name a real tool" if knums and not bad
-                    else (f"{len(bad)} key_number(s) with missing/unknown source_tool"
-                          if knums else "no key_numbers"),
+    findings = _get(draft, "domain_findings", []) or []
+    ungrounded = [f for f in findings if not any(t in str(f.get("basis", "")) for t in KNOWN_TOOLS)]
+    out["subject_integrity.findings_grounded"] = {
+        "verdict": "PASS" if findings and not ungrounded else "FAIL",
+        "evidence": "every finding cites a tool in `basis`" if findings and not ungrounded
+                    else (f"{len(ungrounded)} finding(s) with no tool in `basis`"
+                          if findings else "no domain_findings"),
     }
 
     oqs = _get(draft, "open_questions", []) or []
-    referred = [q for q in oqs if isinstance(q, dict)
-                and re.search(r"attorney|counsel|cpa|cfp|advisor|advisor", str(q.get("refer_to", "")))]
+    referred = [q for q in oqs if re.search(r"attorney|counsel|\bcpa\b|\bcfp\b|advisor|licensed",
+                                            str(q), re.I)]
     out["subject_integrity.out_of_lane_routed"] = {
-        "verdict": "PASS" if len(referred) >= 1 else "FAIL",
-        "evidence": f"{len(referred)} open question(s) routed to a professional",
+        "verdict": "PASS" if referred else "FAIL",
+        "evidence": f"{len(referred)} of {len(oqs)} open question(s) route to a professional",
     }
 
-    hits = [msg for pat, msg in KNOWN_ANTIFACTS.get(scenario_id, [])
-            if re.search(pat, text)]
+    hits = [msg for pat, msg in KNOWN_ANTIFACTS.get(scenario_id, []) if re.search(pat, text)]
     out["subject_integrity.no_antifacts"] = {
         "verdict": "PASS" if not hits else "FAIL",
         "evidence": "clean" if not hits else "; ".join(hits),
@@ -202,15 +201,17 @@ def deterministic_checks(draft, scenario_id: str) -> dict[str, dict]:
     return out
 
 
-# --- judge checks -------------------------------------------------------- --
+# --- judge checks ----------------------------------------------------- --
 
 _JUDGE_SCHEMA = {
     "type": "object",
+    "additionalProperties": False,
     "properties": {
         "checks": {
             "type": "array",
             "items": {
                 "type": "object",
+                "additionalProperties": False,
                 "properties": {
                     "id": {"type": "string"},
                     "verdict": {"type": "string", "enum": ["PASS", "FAIL"]},
@@ -245,7 +246,7 @@ def judge_checks(draft, judge) -> dict[str, dict]:
     return by_id
 
 
-# --- scoring ------------------------------------------------------------- --
+# --- scoring -------------------------------------------------------- --
 
 def grade_tax_response(draft, scenario_id: str = "tax_liquidity_event", judge=None) -> dict:
     results = {**deterministic_checks(draft, scenario_id), **judge_checks(draft, judge)}
@@ -283,55 +284,52 @@ def tax_response_grader(result, check, context) -> dict:
             "detail": {"by_dimension": graded["by_dimension"], "gate_pass": graded["gate_pass"]}}
 
 
-# --- sample drafts (fixtures + discrimination smoke test) ---------------- --
+# --- sample drafts (fixtures + discrimination smoke test) ------------ --
+# shape: estate track's SPECIALIST_DRAFT_SCHEMA
 
 SAMPLE_DRAFTS = {
     "strong": {
-        "recommendation": "Do not fund the trust with the shares or sell the founder stock "
-        "before close. Sequence: (1) before close, test whether a genuine domicile change to "
-        "a no-income-tax state is realistic given California's residency-audit posture; "
-        "(2) at close, if the buyer requires a sale, negotiate rollover / installment terms "
-        "that push gain past the 2027-03-10 QSBS five-year mark; (3) otherwise hold the "
-        "founder shares to 2027-03-10 so the pre-2025 section 1202 100% exclusion applies; "
-        "(4) fund the trust with cash or post-sale proceeds, not the low-basis shares, to "
-        "preserve the death-time step-up; (5) diversify the existing $8M public book over "
-        "2026-2028 with loss harvesting.",
-        "reasoning": "The founder lot was acquired 2022-03, so pre-2025 section 1202 rules "
-        "apply: a five-year hold (reached 2027-03-10) excludes 100% of gain up to the greater "
-        "of $10M or 10x basis. A 2026 sale at the four-year mark gets 0% exclusion. Gain is "
-        "~$21.4M ($22M less $600K basis); at 23.8% federal that is ~$5.1M, plus California at "
-        "13.3% (no preferential rate, no section 1202 conformity) is ~$2.85M, ~$7.95M total. "
-        "Transferring the shares to the trust forfeits the step-up the heirs would get at "
-        "death on ~$21.4M of gain and can disturb the holding period. The estate is ~$40M "
-        "against a $30M married exclusion, so ~$10M is exposed at 40% (~$4M) -- real, but "
-        "smaller than the income-tax cost of gifting the low-basis shares now.",
-        "key_numbers": [
-            {"label": "founder-stock gain", "value": "$21.4M", "source_tool": "get_portfolio"},
-            {"label": "federal LTCG + NIIT rate", "value": "23.8%", "source_tool": "get_tax_brackets"},
-            {"label": "California rate on the gain", "value": "13.3%", "source_tool": "get_state_rules"},
-            {"label": "estimated tax on a 2026 sale", "value": "~$7.95M", "source_tool": "get_tax_brackets"},
-            {"label": "QSBS five-year mark", "value": "2027-03-10", "source_tool": "get_portfolio"},
-            {"label": "married estate exclusion", "value": "$30M", "source_tool": "get_tax_brackets"},
+        "headline": "Hold the founder stock to the 2027 QSBS mark; fund any trust with cash, not shares.",
+        "domain_findings": [
+            {"finding": "The founder lot was acquired 2022-03, so pre-2025 section 1202 rules apply: "
+             "a five-year hold (reached 2027-03-10) excludes 100% of gain up to the greater of $10M "
+             "or 10x basis. A 2026 sale at the four-year mark gets 0% exclusion.",
+             "basis": "get_tax_brackets(2026, ...).qsbs_section_1202 + get_portfolio acquisition date"},
+            {"finding": "Gain is ~$21.4M ($22M less $600K basis). At 23.8% federal that is ~$5.1M; "
+             "California adds 13.3% (no preferential rate, no section 1202 conformity), ~$2.85M, for "
+             "~$7.95M total on a 2026 sale.",
+             "basis": "get_tax_brackets top_combined_ltcg_rate_federal + get_state_trust_rules('California')"},
+            {"finding": "Transferring the shares to an irrevocable trust forfeits the death-time basis "
+             "step-up on ~$21.4M of gain and can disturb the QSBS holding period.",
+             "basis": "get_state_trust_rules('federal').lifetime_gift_basis_rule + step_transaction_risk_note"},
+            {"finding": "The estate is ~$40M against a $30M married exclusion, so ~$10M is exposed at "
+             "40% (~$4M) -- smaller than the income-tax cost of gifting the low-basis shares now.",
+             "basis": "get_tax_brackets(2026, 'married_filing_jointly').estate_and_gift + get_portfolio"},
         ],
+        "recommendation": "Do not fund the trust with the shares or sell the founder stock before "
+        "close. Sequence: first, before close, test whether a genuine domicile change to a "
+        "no-income-tax state is realistic given California's residency-audit posture; then at close, "
+        "if the buyer requires a sale, negotiate rollover / installment terms that push gain past the "
+        "2027-03-10 QSBS mark; next, hold the founder shares to 2027-03-10 so the 100% exclusion "
+        "applies; fund the trust with cash or post-sale proceeds, not the shares; and diversify the "
+        "existing $8M public book over 2026-2028 with loss harvesting.",
         "cross_domain_implications": [
-            {"domain": "estate", "implication": "The 2027-03-10 QSBS date should drive the "
-             "sale timeline; trust funding of the shares should wait until after the exclusion "
-             "is secured and should use proceeds, not shares."},
-            {"domain": "financial_planning", "implication": "Reduce concentration by hedging "
-             "the founder position until it can be sold QSBS-free, not by an early taxable sale."},
+            {"domain": "estate_attorney", "implication": "The 2027-03-10 QSBS date should drive the "
+             "sale timeline; trust funding of the shares should wait until after the exclusion is "
+             "secured and should use proceeds, not shares."},
+            {"domain": "financial_advisor", "implication": "Reduce concentration by hedging the "
+             "founder position until it can be sold QSBS-free, not by an early taxable sale."},
         ],
         "what_id_push_back_on": [
-            {"target": "estate_attorney",
-             "claim": "Move founder shares into the irrevocable trust before close.",
-             "why": "Transferring the appreciated shares forfeits the death-time step-up on "
-             "~$21.4M of gain and can reset the QSBS holding period; the ~$4M estate-tax "
-             "saving is smaller than the income-tax cost. Fund the trust with cash or "
-             "post-sale proceeds."},
-            {"target": "financial_advisor",
-             "claim": "Sell most of the position and diversify at close.",
-             "why": "A 2026 sale costs ~$7.95M in tax that largely disappears if the shares "
-             "are held to the 2027 QSBS mark. Hedge the concentration in the interim and "
-             "stage the sale of the already-diversified public book instead."},
+            {"domain": "estate_attorney",
+             "concern": "Moving founder shares into the irrevocable trust before close forfeits the "
+             "death-time step-up on ~$21.4M of gain and can reset the QSBS holding period; the ~$4M "
+             "estate-tax saving is smaller than the income-tax cost. Fund the trust with cash or "
+             "post-sale proceeds instead."},
+            {"domain": "financial_advisor",
+             "concern": "Selling most of the position to diversify at close costs ~$7.95M in tax that "
+             "largely disappears if the shares are held to the 2027 QSBS mark. Hedge the concentration "
+             "in the interim and stage the sale of the already-diversified public book instead."},
         ],
         "assumptions": [
             "The founder lot meets the section 1202 qualified-small-business tests -- not verified here.",
@@ -339,32 +337,27 @@ SAMPLE_DRAFTS = {
             "No prior gifting has used the married exclusion.",
         ],
         "open_questions": [
-            {"question": "Whether the Meridian shares qualify as QSBS and whether the deal "
-             "structure preserves that treatment.", "refer_to": "a licensed tax attorney"},
-            {"question": "Trust type, situs, and drafting to reach the estate-tax goal without "
-             "a completed gift of the low-basis shares.", "refer_to": "a licensed estate attorney"},
-            {"question": "The hedging instrument and the target allocation for the public book.",
-             "refer_to": "a licensed CFP"},
+            "Consult a licensed tax attorney: whether the Meridian shares qualify as QSBS and whether "
+            "the deal structure preserves that treatment.",
+            "Consult a licensed estate attorney: trust type, situs, and drafting to reach the "
+            "estate-tax goal without a completed gift of the low-basis shares.",
+            "Consult a licensed financial advisor: the hedging instrument and the target allocation "
+            "for the public book.",
         ],
-        "confidence": "medium",
     },
     "weak": {
-        "recommendation": "Setting up the irrevocable trust before the sale is a smart move "
-        "and you should transfer most of the shares into it now -- the trust is airtight and "
-        "removes them from your estate. Then sell and put 60% in equities and 40% in "
-        "municipal bonds.",
-        "reasoning": "Selling the company will trigger significant capital gains tax, but the "
-        "trust will protect the assets. California tax is high so you'll pay a lot. QSBS "
-        "might give you a break of around 40% if it applies.",
-        "key_numbers": [
-            {"label": "capital gains tax", "value": "a large amount", "source_tool": ""},
-            {"label": "QSBS break", "value": "~40%", "source_tool": ""},
+        "headline": "Set up the trust now and diversify.",
+        "domain_findings": [
+            {"finding": "Selling the company will trigger significant capital gains tax.", "basis": "general knowledge"},
+            {"finding": "QSBS might give a break of around 40% if it applies.", "basis": ""},
         ],
+        "recommendation": "Setting up the irrevocable trust before the sale is a smart move and you "
+        "should transfer most of the shares into it now -- the trust is airtight and removes them "
+        "from your estate. Then sell and put 60% in equities and 40% in municipal bonds.",
         "cross_domain_implications": [],
         "what_id_push_back_on": [],
         "assumptions": [],
         "open_questions": [],
-        "confidence": "high",
     },
 }
 
@@ -373,18 +366,17 @@ def _keyword_judge(system: str, user: str, schema: dict) -> dict:
     """Stand-in judge for the smoke test -- keyword heuristics, no model call.
     Looks only at the DRAFT half of the prompt, never the check questions."""
     t = user.split("CHECKS:")[0].lower()
-    def has(*subs): return all(s in t for s in subs)
     verdicts = {
         "completion.recognition_events": "sale" in t and ("transfer" in t or "gift" in t or "fund the trust" in t),
-        "completion.quantified": bool(re.search(r"\$\s?\d|\d\s?%", t)) and "a large amount" not in t,
-        "completion.levers_covered": has("qsbs") and ("step-up" in t or "basis" in t) and ("california" in t or "state" in t),
-        "subject_integrity.no_floating_figures": '"source_tool": ""' not in user and "around 40%" not in t,
+        "completion.quantified": bool(re.search(r"\$\s?\d|\d\s?%", t)) and "significant capital gains tax" not in t,
+        "completion.levers_covered": "qsbs" in t and ("step-up" in t or "basis" in t) and ("california" in t or "state" in t),
+        "subject_integrity.no_floating_figures": '"basis": ""' not in user and "around 40%" not in t,
         "subject_integrity.stays_out_of_law": "airtight" not in t and "bulletproof" not in t,
         "subject_integrity.stays_out_of_portfolio": not re.search(r"\d{2}\s?%\s?(in|to)\s?(equit|bond|stock)", t),
-        "subject_integrity.holds_position": "what_id_push_back_on" in user and '"what_id_push_back_on": []' not in user,
+        "subject_integrity.holds_position": '"what_id_push_back_on": []' not in user and "what_id_push_back_on" in user,
     }
-    return {"checks": [{"id": k, "verdict": "PASS" if v else "FAIL",
-                        "evidence": "keyword heuristic"} for k, v in verdicts.items()]}
+    return {"checks": [{"id": k, "verdict": "PASS" if v else "FAIL", "evidence": "keyword heuristic"}
+                       for k, v in verdicts.items()]}
 
 
 if __name__ == "__main__":

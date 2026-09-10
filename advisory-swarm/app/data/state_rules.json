@@ -1,7 +1,7 @@
 {
   "_note": "Synthetic fixture for the advisory-swarm demo. Simplified for teaching purposes; not real legal or tax advice. Seeded deliberately so the canned 'selling my business' scenarios produce a structurally guaranteed conflict between tax_cpa and estate_attorney (see ESTATE_ATTORNEY_HANDOFF.md and app/prompts/tax_cpa.notes.md).",
   "_reconciliation": "Merged from the estate-attorney track (flat top-level state/federal keys, read by get_state_trust_rules) and the tax track (per-state income-tax detail). Estate keys are unchanged; the tax track adds a `tax_detail` object per state and the extra states FL/NY/TX/WA. Federal lifetime gift exemption harmonized to the OBBBA-2026 figure (15,000,000) to match tax_brackets_2026.json. Structured brackets / NIIT / AMT / QSBS tiers live in tax_brackets_2026.json (get_tax_brackets); this file carries the doctrine and state-law facts.",
-  "_returned_by_tool": "get_state_trust_rules(state) -- accepts a full state name ('California') or a two-letter code ('CA'), plus 'federal'",
+  "_returned_by_tool": "get_state_trust_rules(state) -- state is a full name ('California', 'Nevada', ...) or 'federal'. (Phase 0 may add two-letter-code normalization; the estate track's impl currently takes full names only.)",
 
   "California": {
     "state_income_tax_top_rate": 0.133,

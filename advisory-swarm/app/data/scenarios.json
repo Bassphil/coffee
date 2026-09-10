@@ -89,6 +89,48 @@
         "gold_and_conflict_detail": "app/evals/tax_cases.py",
         "notes_ref": "app/prompts/tax_cpa.notes.md"
       }
+    },
+    {
+      "id": "business_sale_pre_loi",
+      "track": "estate",
+      "title": "Business sale, no LOI yet -- trust-funding timing",
+      "_source": "Folded in from the estate track's standalone fixture (app/data/client_profile_sample.json). Once session.py exists, run_estate_attorney.py should load this entry and client_profile_sample.json can be deleted.",
+      "scenario_text": "I'm selling my business for about $4,000,000. I'm in early discussions with one interested buyer -- no letter of intent signed yet, but I expect one within four to six weeks. I'm a California resident, not married, no kids. My stock is QSBS-eligible with a cost basis around $50,000. Should I move stock into a trust now, and where should the trust be set up?",
+      "profile": {
+        "as_of": "2026-01-15",
+        "primary_client": { "name": "Dana Whitfield", "role": "Business owner" },
+        "marital_status": "single",
+        "filing_status": "single",
+        "state_of_domicile": "CA",
+        "dependents": [],
+        "stated_goals": [
+          "use the sale to fund a trust for future heirs / charity",
+          "keep the QSBS exclusion",
+          "not trigger a gift the IRS can unwind"
+        ]
+      },
+      "portfolio": {
+        "as_of": "2026-01-15",
+        "holdings": [
+          {
+            "id": "business_equity",
+            "description": "Private business equity (QSBS-eligible C-corporation stock)",
+            "asset_class": "private_equity_concentrated",
+            "cost_basis": 50000,
+            "current_value": 4000000,
+            "qsbs_candidate": true,
+            "qsbs_notes": "Acquired well before 2025-07-04 -> pre-OBBBA section 1202: 5-year hold for 100% exclusion, per-issuer cap the greater of $10M or 10x basis. The ~$3.95M gain is inside the single-holder $10M cap, so a multiplied/stacked exclusion via multiple trusts is not needed.",
+            "liquidity_event": { "type": "acquisition", "expected_close": "LOI expected in 4-6 weeks; close later", "offer_value_for_stake": 4000000 }
+          }
+        ]
+      },
+      "eval": {
+        "router_gold_tier": "swarm",
+        "router_reason": "trust-funding sequencing against step-transaction risk; changes action",
+        "planted_conflict_ids": ["c4"],
+        "gold_and_conflict_detail": "app/evals/tax_cases.py",
+        "notes_ref": "advisory-swarm/ESTATE_ATTORNEY_HANDOFF.md"
+      }
     }
   ]
 }

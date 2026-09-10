@@ -21,7 +21,8 @@ Shapes follow Design Document.md:
   grounding (numbers trace to a tool) and direction, not a single right answer.
 """
 
-SCENARIO_ID = "tax_liquidity_event"
+SCENARIO_ID = "tax_liquidity_event"          # tax-track canned scenario
+SCENARIO_ID_PRE_LOI = "business_sale_pre_loi"  # estate-track scenario, folded into scenarios.json
 
 
 ROUTER_LABELS = [
@@ -56,6 +57,10 @@ ROUTER_LABELS = [
      "gold_tier": "swarm",
      "why": "follow-up that needs the full analysis re-run against state rules, "
             "not a Haiku answer off the standing memo"},
+    {"turn": "A buyer is interested in my business but we haven't signed an LOI. "
+             "Should I move stock into a trust now or wait until the price is set?",
+     "gold_tier": "swarm", "high_liability": True,
+     "why": "step-transaction timing vs. gift-tax valuation certainty; the C4 tension"},
 ]
 
 
@@ -83,7 +88,7 @@ PLANTED_CONFLICTS = [
         "question": "Should founder shares go into the irrevocable trust before the "
                     "acquisition closes, or should the sale timing (QSBS 5-year mark) "
                     "and basis step-up drive the sequence instead?",
-        "tool_grounding_required": ["get_tax_brackets", "get_state_rules"],
+        "tool_grounding_required": ["get_tax_brackets", "get_state_trust_rules"],
     },
     {
         "id": "c2",
@@ -107,7 +112,7 @@ PLANTED_CONFLICTS = [
         ],
         "question": "Does the concentration risk justify realizing the founder-stock "
                     "gain in 2026, given the QSBS timing and state-tax cost of doing so?",
-        "tool_grounding_required": ["get_tax_brackets", "get_state_rules"],
+        "tool_grounding_required": ["get_tax_brackets", "get_state_trust_rules"],
     },
     {
         "id": "c3",
@@ -131,6 +136,37 @@ PLANTED_CONFLICTS = [
                     "from a lifetime gift beat the income tax the heirs save from a "
                     "step-up at death?",
         "tool_grounding_required": ["get_tax_brackets"],
+    },
+    {
+        # Estate track's seeded conflict (ESTATE_ATTORNEY_HANDOFF.md), for the
+        # business_sale_pre_loi scenario. tax_cpa's instinct to wait for a fixed
+        # price collides with the step-transaction doctrine.
+        "id": "c4",
+        "scenario_id": SCENARIO_ID_PRE_LOI,
+        "topic": "trust funding timing relative to the letter of intent",
+        "type": "sequencing",
+        "materiality": "changes_action",
+        "positions": [
+            {"agent": "tax_cpa",
+             "expected_position": "Fund the trust after the LOI is signed and the sale "
+             "price is fixed, so the gifted stock's value for gift-tax purposes is "
+             "certain and defensible with a qualified appraisal. A Nevada or Delaware "
+             "situs trust could also shelter trust-level income from California tax."},
+            {"agent": "estate_attorney",
+             "expected_position": "Fund the trust before any LOI or agreement in "
+             "principle exists. Under the step-transaction / assignment-of-income "
+             "doctrine the IRS can collapse a gift made after a near-binding sale "
+             "agreement, taxing the gain to the grantor. Separately, California taxes "
+             "DING/NING trust income back to a California-resident grantor regardless "
+             "of situs, so a Nevada trust does not save state income tax here."},
+        ],
+        "question": "Is trust funding timed to the gift-tax valuation (after the LOI) "
+                    "or to step-transaction risk (before any LOI)?",
+        "tool_grounding_required": ["get_state_trust_rules"],
+        "note": "For this conflict to fire, tax_cpa must actually propose the "
+                "after-LOI timing and/or the Nevada situs -- both fall out of the "
+                "persona's 'don't rush appreciated property into a trust' and 'a "
+                "non-grantor trust has its own situs' reflexes.",
     },
 ]
 
@@ -156,9 +192,20 @@ GOLD_MEMO_POINTS = [
      "gives a recommendation (e.g. gift cash / post-sale proceeds, not the low-basis "
      "shares).",
      "grounding": "Carryover-basis rule and step-up rule cited from get_tax_brackets "
-     "(estate_and_gift.lifetime_gift_basis_rule / basis_step_up_at_death).",
+     "(estate_and_gift.lifetime_gift_basis_rule / basis_step_up_at_death) or "
+     "get_state_trust_rules('federal').",
      "open_question_routing": "Estate-plan structure -> 'consult a licensed estate "
      "attorney'."},
+    {"conflict_id": "c4",
+     "must_resolve": "Memo lands on funding the trust BEFORE any LOI, using a "
+     "qualified appraisal for the not-yet-fixed value -- step-transaction risk wins "
+     "over valuation certainty. It also notes the Nevada-situs idea does not help a "
+     "California resident.",
+     "grounding": "step_transaction_risk_note and the California DING/NING carve-out "
+     "both cited from get_state_trust_rules; the ~$3.95M gain is within the $10M "
+     "single-holder QSBS exclusion, so multiplied/stacked exclusion is unnecessary.",
+     "open_question_routing": "Trust drafting and the qualified appraisal -> "
+     "'consult a licensed estate attorney' and 'a qualified appraiser'."},
 ]
 
 
@@ -167,8 +214,12 @@ if __name__ == "__main__":
     n_swarm = len(ROUTER_LABELS) - n_direct
     print(f"router labels: {len(ROUTER_LABELS)} ({n_direct} direct, {n_swarm} swarm, "
           f"{sum(1 for t in ROUTER_LABELS if t.get('high_liability'))} high-liability)")
-    print(f"planted conflicts: {[c['id'] for c in PLANTED_CONFLICTS]} "
-          f"for scenario {SCENARIO_ID!r}")
+    by_scenario: dict[str, list[str]] = {}
+    for c in PLANTED_CONFLICTS:
+        by_scenario.setdefault(c["scenario_id"], []).append(c["id"])
+    for sid, ids in by_scenario.items():
+        print(f"planted conflicts: {ids} for scenario {sid!r}")
     print(f"gold memo points: {[g['conflict_id'] for g in GOLD_MEMO_POINTS]}")
     agents = {p["agent"] for c in PLANTED_CONFLICTS for p in c["positions"]}
     print(f"agents referenced: {sorted(agents)}")
+    assert {g["conflict_id"] for g in GOLD_MEMO_POINTS} == {c["id"] for c in PLANTED_CONFLICTS}
